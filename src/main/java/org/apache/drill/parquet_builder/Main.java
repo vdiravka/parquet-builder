@@ -16,10 +16,11 @@ public class Main
     }
 
     private void run() throws IOException {
-      File destDir = new File( "/Users/progers/play/data" );
+      File destDir = new File( "/tmp/play/data" );
       BuildFilesDirect builder = new BuildFilesDirect( destDir );
       builder.buildInt32Uint8( );
       builder.buildInt32Uint16( );
       builder.buildInt32Uint32( );
+      builder.buildOptionalMapRequiredBinaryRequiredInt64( );
     }
 }

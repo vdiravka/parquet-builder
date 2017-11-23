@@ -35,7 +35,7 @@ for the Parquet logical types.
 Note that poking around in Drill suggests that Drill has very poor support for Parquet logical types. Some times
 cause an error, the DATE type causes very bizarre output.
 
-The syntax allows structured types (though I've not tried this yet):
+The syntax allows structured types:
 
     message structured {
       required int32 index;
@@ -43,7 +43,18 @@ The syntax allows structured types (though I've not tried this yet):
         optional int32 first;
         optional int32 second;
       }
-    }   
+    }
+
+and outdated annotations (See [Lists](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#backward-compatibility-rules)    and [Maps](https://github.com/apache/parquet-format/blob/master/LogicalTypes.md#backward-compatibility-rules-1) "Backward-compatibility rules"):
+
+    message nested_map {
+      optional group map_field (MAP) {
+        repeated group map (MAP_KEY_VALUE) {
+          required binary key (UTF8);
+          required int64 value;
+        }
+      }
+    }
 
 ## File Builder
 

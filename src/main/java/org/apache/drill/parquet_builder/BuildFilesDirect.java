@@ -4,7 +4,16 @@ import java.io.File;
 import java.io.IOException;
 import java.util.Date;
 
+import org.apache.hadoop.conf.Configuration;
+import org.apache.hadoop.fs.Path;
 import org.apache.hadoop.io.IntWritable;
+import org.apache.parquet.example.data.Group;
+import org.apache.parquet.example.data.simple.SimpleGroupFactory;
+import org.apache.parquet.hadoop.ParquetWriter;
+import org.apache.parquet.hadoop.example.ExampleParquetWriter;
+import org.apache.parquet.hadoop.example.GroupWriteSupport;
+import org.apache.parquet.schema.MessageType;
+import org.apache.parquet.schema.MessageTypeParser;
 
 public class BuildFilesDirect
 {
@@ -23,10 +32,12 @@ public class BuildFilesDirect
     buildInt32Uint8( );
     buildInt32Uint16( );
     buildInt32Uint32( );
+    buildOptionalMapRequiredBinaryRequiredInt64( );
   }
 
   /**
    * Builds a file using only the int32 storage type with no logical
+   * <p>
    * type annotations.
    * 
    * @throws IOException
@@ -46,6 +57,7 @@ public class BuildFilesDirect
 
   /**
    * Builds a file using the int32 storage type plus the int_32 logical type.
+   * <p>
    * This file is not valid in Drill.
    * 
    * @throws IOException
@@ -65,6 +77,7 @@ public class BuildFilesDirect
   
   /**
    * Builds a file using the int32 storage type plus the DATE logical type.
+   * <p>
    * Drill accepts the file, but the resulting date values are off by about
    * 10,000 years.
    * 
@@ -90,6 +103,7 @@ public class BuildFilesDirect
   
   /**
    * Builds a file with the int32 storage type and int_16 logical type.
+   * <p>
    * Drill does not accept the file.
    * 
    * @throws IOException
@@ -109,6 +123,7 @@ public class BuildFilesDirect
   
   /**
    * Builds a file with the int32 storage type and int_8 logical type.
+   * <p>
    * Drill does not accept the file.
    * 
    * @throws IOException
@@ -128,6 +143,7 @@ public class BuildFilesDirect
 
   /**
    * Builds a file with the int32 storage type and uint_8 logical type.
+   * <p>
    * Drill does not accept the file.
    * 
    * @throws IOException
@@ -146,6 +162,7 @@ public class BuildFilesDirect
 
   /**
    * Builds a file with the int32 storage type and uint_16 logical type.
+   * <p>
    * Drill does not accept the file.
    * 
    * @throws IOException
@@ -164,6 +181,7 @@ public class BuildFilesDirect
 
   /**
    * Builds a file with the int32 storage type and uint_16 logical type.
+   * <p>
    * Drill does not accept the file.
    * 
    * @throws IOException
@@ -178,6 +196,69 @@ public class BuildFilesDirect
     writer.write( new IntWritable( 3 ), new IntWritable( 1 ) );
     writer.write( new IntWritable( 4 ), new IntWritable( 0xFFFFFFFF ) );
     writer.close( );
+  }
+
+  /**
+   * Builds a file with the map optional group type, repeated inner map group (with old type of annotation <br>
+   * (MAP_KEY_VALUE) with key/value pairs (required binary UTF8 key and required int64 value).
+   * <p>
+   * Drill can read such file.
+   *
+   * @throws IOException
+   */
+
+  public void buildOptionalMapRequiredBinaryRequiredInt64() throws IOException {
+    Path outFile = new Path(destDir.getPath(), "nested_types.parquet");
+
+    final String schemaText =
+        "message nested_map {" +
+        " optional group map_field (MAP) {" +
+        "  repeated group map (MAP_KEY_VALUE) {" +
+        "   required binary key (UTF8);" +
+        "   required int64 value; " +
+        "  }" +
+        " } " +
+        "}";
+    Configuration conf = new Configuration();
+    MessageType schema = MessageTypeParser.parseMessageType(schemaText);
+    GroupWriteSupport.setSchema(schema, conf);
+
+    // ExampleParquetWriter is an example of ParquetWriter which can be used for creating nested (group) types
+    ParquetWriter<Group> writer = ExampleParquetWriter
+        .builder(outFile)
+        .withType(schema)
+        .withConf(conf)
+        .build();
+
+    SimpleGroupFactory groupFactory = new SimpleGroupFactory(schema);
+    Group group1 = groupFactory.newGroup();
+    Group group2 = groupFactory.newGroup();
+    Group group3 = groupFactory.newGroup();
+    Group nullableGroup = groupFactory.newGroup();
+    writer.write(nullableGroup);
+    group1.addGroup("map_field")
+        .addGroup("map")
+        .append("key", "Google")
+        .append("value", 1L);
+    writer.write(group1);
+    writer.write(nullableGroup);
+    group2.addGroup("map_field")
+        .addGroup("map")
+        .append("key", "WhatsApp")
+        .append("value", 2L);
+    writer.write(group2);
+    writer.write(nullableGroup);
+    Group nestedGroup = group3.addGroup("map_field");
+    nestedGroup
+        .addGroup("map")
+        .append("key", "Facebook")
+        .append("value", 3L);
+    nestedGroup
+        .addGroup("map")
+        .append("key", "Apple")
+        .append("value", 4L);
+    writer.write(group3);
+    writer.close();
   }
 
 }
